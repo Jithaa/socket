@@ -23,7 +23,6 @@ while True:
         msg=struct.pack("Q",len(a))+a
         cl_socket.sendall(msg)
         cv2.imshow("VIDEO",img)
-        cv2.waitKey(0)
-        if cv2.waitKey & 0xFF==ord('q'):
+        if cv2.waitKey(1) & 0xFF==ord('q'):
             cl_socket.close()
 
