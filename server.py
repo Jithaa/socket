@@ -1,39 +1,45 @@
-import socket,pickle,struct,time
+import socket
+import sys
+import cv2
+import pickle
+import numpy as np
+import struct ## new
+import zlib
 
-from cv2 import cv2
+HOST='26.126.177.24'
+PORT=2501
 
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+print('Socket created')
 
-cl_socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s.bind((HOST,PORT))
+print('Socket bind complete')
+s.listen(10)
+print('Socket now listening')
 
-host_ip='26.126.177.24'
-port=25010
-k=(host_ip,port)
-cl_socket.connect(k)
+conn,addr=s.accept()
 
-data=b''
-payload_size=struct.calcsize("Q")
-
+data = b""
+payload_size = struct.calcsize(">L")
+print("payload_size: {}".format(payload_size))
 while True:
-    while len(data)<payload_size:
-        packet=cl_socket.recv(512)
-        if not packet:break
-        data+=packet
+    while len(data) < payload_size:
+        print("Recv: {}".format(len(data)))
+        data += conn.recv(4096)
 
-    packed_msg=data[:payload_size]
-    dat=data[payload_size:]   
-    msg_size=struct.unpack("Q",packed_msg)[0]
+    print("Done Recv: {}".format(len(data)))
+    packed_msg_size = data[:payload_size]
+    data = data[payload_size:]
+    msg_size = struct.unpack(">L", packed_msg_size)[0]
+    print("msg_size: {}".format(msg_size))
+    while len(data) < msg_size:
+        data += conn.recv(4096)
+    frame_data = data[:msg_size]
+    data = data[msg_size:]
 
-
-    while len(dat)<msg_size:
-
-        data+=cl_socket.recv(512)
-
-    frame=data[:msg_size]
-
-    data=data[msg_size:]
-    print("work")
-    frame=pickle.loads(frame)
-
-    cv2.imshow("out",frame)
-    
-cl_socket.close()
+    frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
+    frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+    cv2.imshow('ImageWindow',frame)
+    if cv2.waitKey(1) & 0xFF==ord('q'):
+        break
+        conn.close()
